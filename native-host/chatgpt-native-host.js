@@ -1,8 +1,12 @@
+const http = require('http');
 const os = require('os');
 
-async function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+const HTTP_PORT = 3333; // Port for the HTTP server
+
+// --- START: Functions from your original chatgpt-native-host.js ---
+// Ensure these functions (sendRequest, logError, readBytes, recvResponse)
+// are exactly as you provided them in the prompt.
+// I'm including their signatures here for completeness, but use your definitions.
 
 // Helper function to send a message to the extension
 // e.g. { action: "sendMessage", text: "Hello, ChatGPT!" }
@@ -15,14 +19,14 @@ function sendRequest(command) {
     } else {
         lengthBuffer.writeUInt32BE(contentBuffer.length, 0);
     }
-    
+
     process.stdout.write(lengthBuffer);
     process.stdout.write(contentBuffer);
 }
 
 // Helper function to log messages to stderr
 function logError(message) {
-    process.stderr.write(`NativeHost: ${message}\n`);
+    process.stderr.write(`NativeHost: ${message}${os.EOL}`);
 }
 
 // Helper function to read a specific number of bytes from a readable stream
@@ -45,10 +49,9 @@ async function readBytes(readableStream, numBytes) {
         function onReadable() {
             if (fulfilled) return;
             let chunk;
-            // Try to read the exact amount needed if available, or whatever is there
-            chunk = readableStream.read(numBytes - buffer.length); 
-            if (chunk === null && (numBytes - buffer.length > 0) ) { // If exact read failed and we still need bytes
-                chunk = readableStream.read(); // Read whatever is available
+            chunk = readableStream.read(numBytes - buffer.length);
+            if (chunk === null && (numBytes - buffer.length > 0)) {
+                chunk = readableStream.read();
             }
 
             if (chunk) {
@@ -65,11 +68,10 @@ async function readBytes(readableStream, numBytes) {
                 }
                 resolve(resultBuffer);
             } else if (readableStream.readableEnded && buffer.length < numBytes) {
-                // Stream ended before we could read numBytes
                 fulfilled = true;
                 cleanupListeners();
-                if (numBytes === 4 && buffer.length === 0) { // Trying to read length, but EOF and nothing read
-                    resolve(null); // Indicates clean EOF before length, for readMessage to handle
+                if (numBytes === 4 && buffer.length === 0) {
+                    resolve(null);
                 } else {
                     reject(new Error(`Stdin ended unexpectedly. Expected ${numBytes} bytes, got ${buffer.length}.`));
                 }
@@ -82,7 +84,7 @@ async function readBytes(readableStream, numBytes) {
                 fulfilled = true;
                 cleanupListeners();
                 if (numBytes === 4 && buffer.length === 0) {
-                    resolve(null); // Clean EOF before length
+                    resolve(null);
                 } else {
                     reject(new Error(`Stdin ended. Expected ${numBytes} bytes, got ${buffer.length}.`));
                 }
@@ -99,9 +101,8 @@ async function readBytes(readableStream, numBytes) {
         readableStream.on('readable', onReadable);
         readableStream.on('end', onEnd);
         readableStream.on('error', onError);
-        
-        // Initial attempt to read, in case data is already buffered or stream is synchronous
-        onReadable(); 
+
+        onReadable();
     });
 }
 
@@ -110,12 +111,12 @@ async function readBytes(readableStream, numBytes) {
 async function recvResponse() {
     try {
         const lengthBuffer = await readBytes(process.stdin, 4);
-        
+
         if (lengthBuffer === null) {
-            // This means stdin was closed before the 4-byte length could be read.
-            // Python script exits with 0 in this case.
             logError("Stdin closed (EOF before message length). Exiting.");
-            process.exit(0);
+            // This situation means Chrome closed the pipe.
+            // We should probably exit the native host so the .bat file can restart it.
+            process.exit(1);
         }
 
         let messageLength;
@@ -126,82 +127,149 @@ async function recvResponse() {
         }
 
         if (messageLength === 0) {
-            // Handle zero-length message content (JSON.parse("") will throw)
             try {
                 return JSON.parse("");
             } catch (e) {
                 const jsonError = new Error(`JSON decode error for empty message: ${e.message}`);
-                jsonError.name = "JSONDecodeError"; // Mimic Python's error type
+                jsonError.name = "JSONDecodeError";
                 throw jsonError;
             }
         }
 
         const contentBuffer = await readBytes(process.stdin, messageLength);
-        // If readBytes resolved, contentBuffer should be valid and have messageLength bytes.
-        // If EOF occurred during content read, readBytes would have rejected.
-        
         const messageContent = contentBuffer.toString('utf-8');
         return JSON.parse(messageContent);
 
     } catch (error) {
-        // Differentiate struct-like errors (from reading bytes/length) from JSONDecodeError
         if (error.message && (error.message.includes("Stdin ended") || error.message.includes("readUInt32"))) {
             const structError = new Error(`Struct error (likely stdin closed or malformed message length): ${error.message}`);
-            structError.name = "StructError"; // Custom name to mimic Python's struct.error
+            structError.name = "StructError";
             throw structError;
         }
-        // JSON.parse errors are SyntaxError. We can re-wrap them to match Python's error name.
         if (error instanceof SyntaxError || (error.name === "JSONDecodeError" && error !== SyntaxError)) {
             const jsonError = new Error(`JSON decode error: ${error.message}`);
             jsonError.name = "JSONDecodeError";
             throw jsonError;
         }
-        throw error; // Re-throw other errors
+        throw error;
     }
 }
 
 
-async function main() {
-    logError("Native host started.");
+let isProcessingExtensionRequest = false;
+const requestQueue = []; // Queue for incoming HTTP requests
 
-    try {
-        while (true) {
-            sendRequest({ action: 'ping' });
-            const receivedMessage = await recvResponse();
-            logError(`Received from extension: ${JSON.stringify(receivedMessage)}`);
-            await delay(1000);
-        }
-    } catch (error) {
-        if (error.name === "StructError") {
-            logError(`Struct error (likely stdin closed or malformed message length): ${error.message}`);
-            process.exit(1);
-        } else if (error.name === "JSONDecodeError") {
-            logError(`JSON decode error: ${error.message}`);
-            process.exit(1);
-        } else {
-            logError(`An unexpected error occurred: ${error.message}${error.stack ? `\nStack: ${error.stack}` : ''}`);
+// Function to process a single command with the extension
+// Ensures only one command is sent to the extension at a time
+async function processCommandWithExtension(commandFromCli) {
+    // This function will be called by the HTTP server for each CLI request.
+    // It will queue if another request is already being processed with the extension.
+    return new Promise((resolve, reject) => {
+        const task = async () => {
+            isProcessingExtensionRequest = true;
             try {
-                sendRequest({"status": "error", "error_message": String(error.message)});
-            } catch (sendError) {
-                logError(`Could not send error message to extension: ${sendError.message}`);
+                logError(`Sending to extension: ${JSON.stringify(commandFromCli)}`);
+                sendRequest(commandFromCli); // Send to Chrome via stdout
+
+                const responseFromExtension = await recvResponse(); // Receive from Chrome via stdin
+                logError(`Received from extension: ${JSON.stringify(responseFromExtension)}`);
+                resolve(responseFromExtension);
+            } catch (error) {
+                logError(`Error during extension communication: ${error.message} ${error.stack || ''}`);
+                // If recvResponse throws StructError, it means the extension connection is likely gone.
+                if (error.name === "StructError") {
+                    logError("StructError in native messaging pipe. Exiting native host to allow restart.");
+                    // Exit the process so the .bat can restart it, hoping to re-establish the pipe.
+                    process.exit(1);
+                }
+                reject(error);
+            } finally {
+                isProcessingExtensionRequest = false;
+                // Process next in queue if any
+                if (requestQueue.length > 0) {
+                    const nextTask = requestQueue.shift();
+                    nextTask(); // Execute the next task
+                }
             }
-            process.exit(1);
+        };
+
+        if (isProcessingExtensionRequest) {
+            logError("Extension communication busy, queuing request.");
+            requestQueue.push(task); // Add the task to the queue
+        } else {
+            task(); // Execute immediately
         }
-    }
+    });
 }
 
-process.stdin.resume(); 
-main().catch(err => {
-    logError(`Critical unhandled error in main execution: ${err.message}${err.stack ? `\nStack: ${err.stack}` : ''}`);
-    process.exit(1);
-});
+function main() {
+    // Create and start the HTTP server
+    const server = http.createServer(async (req, res) => {
+        if (req.method === 'POST' && req.url === '/command') {
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString(); // Convert Buffer to string
+            });
+            req.on('end', async () => {
+                try {
+                    const commandFromCli = JSON.parse(body);
+                    logError(`HTTP Server: Received command from CLI: ${JSON.stringify(commandFromCli)}`);
 
-process.on('unhandledRejection', (reason, promise) => {
-    logError(`Unhandled Rejection at: ${promise}, reason: ${reason.stack || reason}`);
-    process.exit(1); // Optional: exit on unhandled rejection
-});
+                    // Process the command with the extension (this handles queuing)
+                    const responseFromExtension = await processCommandWithExtension(commandFromCli);
 
-process.on('uncaughtException', (err) => {
-    logError(`Uncaught Exception: ${err.stack || err}`);
-    process.exit(1); // Mandatory: Node.js best practice is to exit on uncaught exception
-});
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(responseFromExtension));
+
+                } catch (error) {
+                    logError(`HTTP Server: Error processing request: ${error.message} ${error.stack || ''}`);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        status: "error",
+                        message: `Native host internal error: ${error.message}`,
+                        details: error.name // e.g., StructError, JSONDecodeError
+                    }));
+                }
+            });
+        } else {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: "error", message: "Not Found. Send POST to /command" }));
+        }
+    });
+
+    // Start listening for stdin data (for native messaging with Chrome)
+    process.stdin.resume();
+
+    // Start the HTTP server
+    server.listen(HTTP_PORT, () => {
+        logError(`Native host HTTP server started and listening on http://localhost:${HTTP_PORT}`);
+        // The old main() loop that sent pings is removed.
+        // The host is now driven by incoming HTTP requests.
+    });
+
+    // Graceful shutdown
+    process.on('SIGINT', () => {
+        logError('SIGINT received. Shutting down HTTP server and native host.');
+        server.close(() => {
+            logError('HTTP server closed.');
+            process.exit(0);
+        });
+        // Give it a moment to close, then force exit if needed
+        setTimeout(() => {
+            process.exit(0);
+        }, 2000);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+        logError(`Unhandled Rejection at: ${promise}, reason: ${reason.stack || reason}`);
+    });
+
+    process.on('uncaughtException', (err) => {
+        logError(`Uncaught Exception: ${err.stack || err}`);
+        process.exit(1);
+    });
+
+    logError("Native host script started.");
+}
+
+main();

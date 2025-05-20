@@ -51,10 +51,10 @@ function handleCliCommand(command, options = {}) {
             return;
         }
 
-        const tabId = tabs[0].id;
-        chrome.tabs.sendMessage(tabId, command, (response) => {
+        const tab = tabs.find((t) => t.active) || tabs[0];
+        chrome.tabs.sendMessage(tab.id, command, (response) => {
             if (chrome.runtime.lastError) {
-                console.error(`Error sending message to ${tabId}:${tabs[0].url} content script:`, chrome.runtime.lastError.message);
+                console.error(`Error sending message to ${tab.id}:${tab.url} content script:`, chrome.runtime.lastError.message);
                 sendToCli({ status: "error", message: `Error interacting with page: ${chrome.runtime.lastError.message}`, details: command });
             } else {
                 console.log("Response from content script:", response);

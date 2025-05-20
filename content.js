@@ -1,0 +1,176 @@
+const PROMPT_TEXTAREA_ID = 'prompt-textarea';
+const SEND_BUTTON_TEST_IDS = ['send-button', 'composer-speech-button'];
+
+let promptTextarea = null;
+let sendButton = null;
+
+function log(...args) {
+    console.log('ChatGPT Connector:', ...args);
+}
+
+function warn(...args) {
+    console.warn('ChatGPT Connector:', ...args);
+}
+
+function error(...args) {
+    console.error('ChatGPT Connector:', ...args);
+}
+
+async function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function delayRandom(ms, bias = 0.25) {
+    const offset = Math.floor(Math.random() * (ms * bias));
+    const start = ms * (1 - bias / 2);
+    const real = start + offset;
+    await delay(real);
+}
+
+function getSendButton() {
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    const sendButton = allButtons.find(button => {
+        const testId = button.getAttribute('data-testid');
+        return SEND_BUTTON_TEST_IDS.includes(testId);
+    });
+    return sendButton;
+}
+
+function getPromptTextarea() {
+    const textarea = document.getElementById(PROMPT_TEXTAREA_ID);
+    return textarea;
+}
+
+function getNewChatButton() {
+    const newChatButton = document.querySelector('[data-testid="create-new-chat-button"]');
+    return newChatButton;
+}
+
+function getOptionsButton() {
+    const optionsButton = document.querySelector('[data-testid="conversation-options-button"]');
+    return optionsButton;
+}
+
+async function sendMessage(text, sendResponse) {
+    const editor = getPromptTextarea();
+    if (!editor) {
+        warn('Prompt textarea not found. Cannot send message.');
+        sendResponse({ success: false, error: 'Prompt textarea not found.' });
+        return;
+    }
+
+    editor.focus();
+    await delayRandom(50);
+
+    // 创建选区对象
+    const selection = window.getSelection();
+    const range = document.createRange();
+
+    // 定位到<p>标签内部
+    const pNode = editor.querySelector("p");
+    range.selectNodeContents(pNode);
+    range.collapse(false); // 光标移至末尾
+
+    // 执行输入
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.execCommand("insertText", false, text);
+
+    await delayRandom(100);
+
+    const sendButton = getSendButton();
+    if (sendButton) {
+        sendButton.click();
+        log('Message sent to page:', text);
+    } else {
+        warn('Send button not found. Cannot send message.');
+        sendResponse({ success: false, error: 'Send button not found.' });
+    }
+
+    sendResponse({ success: true });
+}
+
+async function newChat(sendResponse) {
+    const newChatBtn = getNewChatButton();
+    if (!newChatBtn) {
+        warn('New chat button not found. Cannot start new chat.');
+        sendResponse({ success: false, error: 'New chat button not found.' });
+        return;
+    }
+
+    newChatBtn.click();
+    await delayRandom(100);
+    sendResponse({ success: true });
+}
+
+async function deleteChat(sendResponse) {
+    const optionsBtn = getOptionsButton();
+    if (!optionsBtn) {
+        warn('Options button not found. Cannot delete chat.');
+        sendResponse({ success: false, error: 'Options button not found.' });
+        return;
+    }
+
+    const pointerDownEvent = new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerType: 'mouse',
+    });
+    optionsBtn.dispatchEvent(pointerDownEvent);
+
+    await delayRandom(200);
+
+    const deleteBtn = document.querySelector('[data-testid="delete-chat-menu-item"]');
+    if (!deleteBtn) {
+        warn('Delete chat button not found. Cannot delete chat.');
+        sendResponse({ success: false, error: 'Delete chat button not found.' });
+        return;
+    }
+
+    deleteBtn.click();
+    await delayRandom(200);
+
+    const confirmBtn = document.querySelector('[data-testid="delete-conversation-confirm-button"]');
+    if (!confirmBtn) {
+        warn('Confirm delete button not found. Cannot confirm delete.');
+        sendResponse({ success: false, error: 'Confirm delete button not found.' });
+        return;
+    }
+
+    confirmBtn.click();
+    sendResponse({ success: true });
+}
+
+async function stop(sendResponse) {
+    const stopBtn = document.querySelector('[data-testid="stop-button"]');
+    if (!stopBtn) {
+        warn('Stop button not found. Cannot stop.');
+        sendResponse({ success: false, error: 'Stop button not found.' });
+        return;
+    }
+
+    stopBtn.click();
+    sendResponse({ success: true });
+}
+
+// --- Listen for messages from the background script ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    log('Message received in content script:', request);
+    if (request.action === 'sendMessage') {
+        sendMessage(request.text, sendResponse);
+    } else if (request.action === 'newChat') {
+        newChat(sendResponse);
+    } else if (request.action === 'deleteChat') {
+        deleteChat(sendResponse);
+    } else if (request.action === 'stop') {
+        stop(sendResponse);
+    } else if (request.action === 'ping') {
+        sendResponse({ success: true, response: 'pong' });
+    } else {
+        warn('Unknown action in content script:', request.action);
+        sendResponse({ success: false, error: `Unknown action: ${request.action}` });
+    }
+    return true;
+});
+
+log('content script loaded.');

@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT CLI Connector",
+  "version": "0.1.0",
+  "description": "Connects a command-line interface to the ChatGPT web page.",
+  "permissions": [
+    "scripting",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle" // 建议在文档加载完成后注入
+    }
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "ChatGPT CLI Connector"
+  },
+  // 如果使用原生消息传递，并且原生主机需要知道扩展ID
+  // "externally_connectable": {
+  //   "ids":
+  // }
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -62,16 +62,13 @@ async function sendMessage(text, sendResponse) {
     editor.focus();
     await delayRandom(50);
 
-    // 创建选区对象
     const selection = window.getSelection();
     const range = document.createRange();
 
-    // 定位到<p>标签内部
     const pNode = editor.querySelector("p");
     range.selectNodeContents(pNode);
-    range.collapse(false); // 光标移至末尾
+    range.collapse(false);
 
-    // 执行输入
     selection.removeAllRanges();
     selection.addRange(range);
     document.execCommand("insertText", false, text);

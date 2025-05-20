@@ -1,9 +1,0 @@
-{
-  "name": "lovebird.chatgpt_native_host",
-  "description": "Native host for ChatGPT CLI Connector extension.",
-  "path": "{path-absolute}\\native-host\\run-native-host.bat",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://{extension-id}/"
-  ]
-}

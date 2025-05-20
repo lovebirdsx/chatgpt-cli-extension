@@ -1,6 +1,6 @@
 const NATIVE_HOST_NAME = "lovebird.chatgpt_native_host";
 
-let communicationPort = null; // 用于 Native Messaging 或 WebSocket
+let communicationPort = null;
 
 // --- Native Messaging Setup ---
 function connectNativeHost() {
@@ -24,9 +24,6 @@ function connectNativeHost() {
     });
     console.log("Native messaging port connected or connection attempt initiated.");
 }
-
-
-connectNativeHost();
 
 const allCommands = [
     'ping',
@@ -73,7 +70,21 @@ function sendToCli(message) {
     }
 }
 
-console.log("ChatGPT Connector background script loaded.");
+function main() {
+    chrome.runtime.onStartup.addListener(() => {
+        console.log("onStartup fired — trying to connect native host");
+        connectNativeHost();
+    });
+    
+    chrome.runtime.onInstalled.addListener((details) => {
+        console.log("onInstalled fired (reason:", details.reason, ")");
+        connectNativeHost();
+    });
+    
+    console.log("ChatGPT Connector background script loaded.");
+}
+
+main();
 
 // --- Test functions for CLI commands ---
 function m() {

@@ -26,7 +26,15 @@ function sendRequest(command) {
 
 // Helper function to log messages to stderr
 function logError(message) {
-    process.stderr.write(`NativeHost: ${message}${os.EOL}`);
+    const timestamp = new Date().toLocaleString('default', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    process.stderr.write(`[${timestamp}]: ${message}${os.EOL}`);
 }
 
 // Helper function to read a specific number of bytes from a readable stream
@@ -245,6 +253,16 @@ function main() {
         logError(`Native host HTTP server started and listening on http://localhost:${HTTP_PORT}`);
         // The old main() loop that sent pings is removed.
         // The host is now driven by incoming HTTP requests.
+    });
+    
+    process.stdin.on('end', () => {
+        logError('STDIN closed, exiting native host.');
+        server.close(() => process.exit(0));
+    });
+
+    process.stdin.on('close', () => {
+        logError('STDIN close event triggered, exiting native host.');
+        server.close(() => process.exit(0));
     });
 
     // Graceful shutdown

@@ -88,16 +88,35 @@ async function sendMessage(text, sendResponse) {
 }
 
 async function newChat(sendResponse) {
-    const newChatBtn = getNewChatButton();
-    if (!newChatBtn) {
-        warn('New chat button not found. Cannot start new chat.');
-        sendResponse({ success: false, error: 'New chat button not found.' });
-        return;
-    }
+    try {
+        const downEvent = new KeyboardEvent('keydown', {
+            key: 'o',
+            code: 'KeyO',
+            ctrlKey: true,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(downEvent);
+        
+        const upEvent = new KeyboardEvent('keyup', {
+            key: 'o',
+            code: 'KeyO',
+            ctrlKey: true,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(upEvent);
+        
+        await delayRandom(100);
 
-    newChatBtn.click();
-    await delayRandom(100);
-    sendResponse({ success: true });
+        sendResponse({ success: true });
+        log('newChat via shortcut sent');
+    } catch (err) {
+        warn('Failed to dispatch newChat shortcut:', err);
+        sendResponse({ success: false, error: err.message });
+    }
 }
 
 async function deleteChat(sendResponse) {

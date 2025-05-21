@@ -79,7 +79,8 @@ function main() {
     // Note: setx can only modify the user's environment variables, and the changes will appear in new terminals.
     const currentPath = process.env.PATH || '';
     if (!currentPath.split(';').includes(rootDir)) {
-        winCmd(`setx PATH "%PATH%;${rootDir}"`);
+        // use powershell to set the PATH variable, setx is not reliable when path is too long
+        winCmd(`powershell -Command "[Environment]::SetEnvironmentVariable('PATH', [Environment]::GetEnvironmentVariable('PATH', 'User') + ';${rootDir}', 'User')"`);
         console.log('✅ Extension root directory added to user\'s PATH. Reopen the terminal to use chatgpt-cli.');
     } else {
         console.log('ℹ️ Extension root directory is already in PATH, no need to add it again.');

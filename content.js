@@ -150,9 +150,22 @@ async function stop(sendResponse) {
     sendResponse({ success: true });
 }
 
+function formatRequest(request) {
+    const formatted = {};
+    Object.keys(request).forEach(key => {
+        const value = request[key];
+        if (typeof value === 'string' && value.length > 64) {
+            formatted[key] = value.substring(0, 61) + '...';
+        } else {
+            formatted[key] = value;
+        }
+    });
+    return formatted;
+}
+
 // --- Listen for messages from the background script ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    log('Message received in content script:', request);
+    log('Message received in content script:', formatRequest(request));
     if (request.action === 'sendMessage') {
         sendMessage(request.text, sendResponse);
     } else if (request.action === 'newChat') {

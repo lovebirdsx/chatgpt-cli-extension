@@ -163,6 +163,18 @@ async function recvResponse() {
     }
 }
 
+function formatCommand(command) {
+    const formatted = {};
+    Object.keys(command).forEach(key => {
+        const value = command[key];
+        if (typeof value === 'string' && value.length > 64) {
+            formatted[key] = value.substring(0, 61) + '...';
+        } else {
+            formatted[key] = value;
+        }
+    });
+    return formatted;
+}
 
 let isProcessingExtensionRequest = false;
 const requestQueue = []; // Queue for incoming HTTP requests
@@ -176,7 +188,7 @@ async function processCommandWithExtension(commandFromCli) {
         const task = async () => {
             isProcessingExtensionRequest = true;
             try {
-                logError(`Sending to extension: ${JSON.stringify(commandFromCli)}`);
+                logError(`Sending to extension: ${JSON.stringify(formatCommand(commandFromCli))}`);
                 sendRequest(commandFromCli); // Send to Chrome via stdout
 
                 const responseFromExtension = await recvResponse(); // Receive from Chrome via stdin
@@ -221,7 +233,7 @@ function main() {
             req.on('end', async () => {
                 try {
                     const commandFromCli = JSON.parse(body);
-                    logError(`HTTP Server: Received command from CLI: ${JSON.stringify(commandFromCli)}`);
+                    logError(`HTTP Server: Received command from CLI: ${JSON.stringify(formatCommand(commandFromCli))}`);
 
                     // Process the command with the extension (this handles queuing)
                     const responseFromExtension = await processCommandWithExtension(commandFromCli);

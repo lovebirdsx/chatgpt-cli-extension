@@ -51,7 +51,7 @@ function handleCliCommand(command, options = {}) {
         const tab = tabs.find((t) => t.active) || tabs[0];
         chrome.tabs.sendMessage(tab.id, command, (response) => {
             if (chrome.runtime.lastError) {
-                console.error(`Error sending message to ${tab.id}:${tab.url} content script:`, chrome.runtime.lastError.message);
+                console.warn(`Error sending message to ${tab.id}:${tab.url} content script:`, chrome.runtime.lastError.message);
                 sendToCli({ status: "error", message: `Error interacting with page: ${chrome.runtime.lastError.message}`, details: command });
             } else {
                 console.log("Response from content script:", response);

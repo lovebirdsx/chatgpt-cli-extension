@@ -1,5 +1,6 @@
 const http = require('http');
 const os = require('os');
+const fs = require('fs');
 
 const NATIVE_HOST_SERVER_ADDRESS = 'localhost';
 const NATIVE_HOST_SERVER_PORT = 3333;
@@ -43,7 +44,7 @@ async function sendCommand(commandPayload) {
                     }
                 } catch (e) {
                     const error = new Error(`Failed to parse JSON response: ${e.message}. Raw response: ${responseBody}`);
-                    error.statusCode = res.statusCode; // Keep status code if available
+                    error.statusCode = res.statusCode;
                     reject(error);
                 }
             });
@@ -64,24 +65,42 @@ async function main() {
     if (args.length === 0) {
         console.error('Error: No command provided.');
         console.error('Usage: node cli.js <command> [arguments...]');
-        console.error('Available commands: ping, sendMessage <text>, newChat, deleteChat, stop');
+        console.error('Available commands: ping, sendMessage <text|--file <path>>, newChat, deleteChat, stop');
         process.exit(1);
     }
 
     const action = args[0];
     const commandPayload = { action };
 
-    // Add command-specific arguments
     if (action === 'sendMessage') {
-        if (args.length < 2) {
-            console.error('Error: sendMessage command requires a text argument.');
-            console.error('Usage: node cli.js sendMessage "Your message here"');
-            process.exit(1);
+        // support reading message text directly or from file
+        let text = '';
+        const fileFlagIndex = args.indexOf('--file');
+        if (fileFlagIndex !== -1) {
+            if (args.length <= fileFlagIndex + 1) {
+                console.error('Error: --file flag requires a file path.');
+                process.exit(1);
+            }
+            const filePath = args[fileFlagIndex + 1];
+            try {
+                text = fs.readFileSync(filePath, 'utf8');
+            } catch (e) {
+                console.error(`Error: Failed to read file '${filePath}': ${e.message}`);
+                process.exit(1);
+            }
+        } else {
+            if (args.length < 2) {
+                console.error('Error: sendMessage command requires a text argument or --file <path>.');
+                console.error('Usage: node cli.js sendMessage "Your message here" OR node cli.js sendMessage --file path/to/file.txt');
+                process.exit(1);
+            }
+            text = args.slice(1).join(' ');
         }
-        commandPayload.text = args.slice(1).join(' '); // Join all remaining args as the message
+        commandPayload.text = text;
+
     } else if (!['ping', 'newChat', 'deleteChat', 'stop'].includes(action)) {
         console.error(`Error: Unknown command "${action}"`);
-        console.error('Available commands: ping, sendMessage <text>, newChat, deleteChat, stop');
+        console.error('Available commands: ping, sendMessage <text|--file <path>>, newChat, deleteChat, stop');
         process.exit(1);
     }
 

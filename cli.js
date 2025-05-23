@@ -98,9 +98,9 @@ async function main() {
         }
         commandPayload.text = text;
 
-    } else if (!['ping', 'newChat', 'deleteChat', 'stop'].includes(action)) {
+    } else if (!['ping', 'newChat', 'deleteChat', 'stop', 'selectModel1', 'selectModel2', 'selectModel3', 'selectModel4', 'selectModel5'].includes(action)) {
         console.error(`Error: Unknown command "${action}"`);
-        console.error('Available commands: ping, sendMessage <text|--file <path>>, newChat, deleteChat, stop');
+        console.error('Available commands: ping, sendMessage <text|--file <path>>, newChat, deleteChat, stop, selectModel1…selectModel5');
         process.exit(1);
     }
 

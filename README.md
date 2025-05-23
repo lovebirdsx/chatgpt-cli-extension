@@ -21,6 +21,7 @@ The project consists of three main components:
 
 ## Features
 
+* **Select Model**: Choose between different ChatGPT models (1-5), injects the model selection into the ChatGPT page.
 * **Send Messages**: Send prompts to ChatGPT from your terminal.
 * **New Chat**: Start a new conversation.
 * **Delete Chat**: Delete the current conversation.

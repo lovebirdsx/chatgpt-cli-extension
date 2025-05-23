@@ -98,7 +98,7 @@ async function newChat(sendResponse) {
             cancelable: true
         });
         document.dispatchEvent(downEvent);
-        
+
         const upEvent = new KeyboardEvent('keyup', {
             key: 'o',
             code: 'KeyO',
@@ -108,7 +108,7 @@ async function newChat(sendResponse) {
             cancelable: true
         });
         document.dispatchEvent(upEvent);
-        
+
         await delayRandom(100);
 
         sendResponse({ success: true });
@@ -169,6 +169,40 @@ async function stop(sendResponse) {
     sendResponse({ success: true });
 }
 
+async function selectModel(modelId, sendResponse) {
+    try {
+        const btn = document.querySelector('button[data-testid="model-switcher-dropdown-button"]');
+        if (!btn) {
+            warn('Model selector button not found.');
+            sendResponse({ success: false, error: 'Model selector button not found.' });
+            return;
+        }
+
+        const pointerDownEvent = new PointerEvent('pointerdown', {
+            bubbles: true,
+            cancelable: true,
+            pointerType: 'mouse',
+        });
+        btn.dispatchEvent(pointerDownEvent);
+        
+        await delayRandom(100);
+
+        const options = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
+        if (options.length < modelId) {
+            warn(`Only ${options.length} models found, cannot select #${modelId}.`);
+            sendResponse({ success: false, error: 'Not enough model options.' });
+            return;
+        }
+
+        options[modelId - 1].click();
+        log(`selectModel${modelId} executed`);
+        sendResponse({ success: true });
+    } catch (err) {
+        warn('selectModel error:', err);
+        sendResponse({ success: false, error: err.message });
+    }
+}
+
 function formatRequest(request) {
     const formatted = {};
     Object.keys(request).forEach(key => {
@@ -185,20 +219,38 @@ function formatRequest(request) {
 // --- Listen for messages from the background script ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     log('Message received in content script:', formatRequest(request));
-    if (request.action === 'sendMessage') {
-        sendMessage(request.text, sendResponse);
-    } else if (request.action === 'newChat') {
-        newChat(sendResponse);
-    } else if (request.action === 'deleteChat') {
-        deleteChat(sendResponse);
-    } else if (request.action === 'stop') {
-        stop(sendResponse);
-    } else if (request.action === 'ping') {
-        sendResponse({ success: true, response: 'pong' });
-    } else {
-        warn('Unknown action in content script:', request.action);
-        sendResponse({ success: false, error: `Unknown action: ${request.action}` });
+    switch (request.action) {
+        case 'sendMessage':
+            sendMessage(request.text, sendResponse);
+            break;
+        case 'newChat':
+            newChat(sendResponse);
+            break;
+        case 'deleteChat':
+            deleteChat(sendResponse);
+            break;
+        case 'stop':
+            stop(sendResponse);
+            break;
+        case 'ping':
+            sendResponse({ success: true, response: 'pong' });
+            break;
+        case 'selectModel1':
+        case 'selectModel2':
+        case 'selectModel3':
+        case 'selectModel4':
+        case 'selectModel5': {
+            const modelId = parseInt(request.action.replace('selectModel', ''), 10);
+            selectModel(modelId, sendResponse);
+            break;
+        }
+
+        default:
+            warn('Unknown action in content script:', request.action);
+            sendResponse({ success: false, error: `Unknown action: ${request.action}` });
+            break;
     }
+    
     return true;
 });
 

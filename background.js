@@ -31,7 +31,18 @@ const allCommands = [
     'newChat',
     'deleteChat',
     'stop',
-]
+    'selectModel1',
+    'selectModel2',
+    'selectModel3',
+    'selectModel4',
+    'selectModel5',
+];
+
+chrome.commands.onCommand.addListener((command) => {
+    if (command.startsWith('selectModel')) {
+        handleCliCommand({ action: command });
+    }
+});
 
 // --- Handle commands from CLI (via Native Host or WebSocket) ---
 function handleCliCommand(command, options = {}) {

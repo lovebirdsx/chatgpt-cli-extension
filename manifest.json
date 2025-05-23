@@ -32,6 +32,23 @@
     },
     "default_title": "ChatGPT CLI Connector"
   },
+  "commands": {
+    "selectModel1": {
+      "description": "Select ChatGPT Model 1"
+    },
+    "selectModel2": {
+      "description": "Select ChatGPT Model 2"
+    },
+    "selectModel3": {
+      "description": "Select ChatGPT Model 3"
+    },
+    "selectModel4": {
+      "description": "Select ChatGPT Model 4"
+    },
+    "selectModel5": {
+      "description": "Select ChatGPT Model 5"
+    }
+  },
   // 如果使用原生消息传递，并且原生主机需要知道扩展ID
   // "externally_connectable": {
   //   "ids":

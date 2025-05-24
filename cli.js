@@ -84,6 +84,7 @@ async function main() {
             const filePath = args[fileFlagIndex + 1];
             try {
                 text = fs.readFileSync(filePath, 'utf8');
+                text = text.replaceAll('\r\n', '\n');
             } catch (e) {
                 console.error(`Error: Failed to read file '${filePath}': ${e.message}`);
                 process.exit(1);

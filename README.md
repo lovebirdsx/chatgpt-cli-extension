@@ -22,10 +22,12 @@ The project consists of three main components:
 ## Features
 
 * **Select Model**: Choose between different ChatGPT models (1-5), injects the model selection into the ChatGPT page.
+  * Shortcut is `Alt + 1-5` to select the model.
 * **Send Messages**: Send prompts to ChatGPT from your terminal.
 * **New Chat**: Start a new conversation.
 * **Delete Chat**: Delete the current conversation.
 * **Stop Generation**: Stop ChatGPT from generating a response.
+  * Shortcut is `Alt + S` to stop generation.
 * **Ping**: Test the connection to the extension.
 
 ## Architecture Flow

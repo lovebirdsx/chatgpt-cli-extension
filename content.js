@@ -203,6 +203,29 @@ async function selectModel(modelId, sendResponse) {
     }
 }
 
+function handleKeydown(event) {
+    const active = document.activeElement;
+    if (!active) {
+        return;
+    }
+    
+    if (event.key === '1' && event.altKey) {
+        selectModel(1, () => {});
+    } else if (event.key === '2' && event.altKey) {
+        selectModel(2, () => {});
+    } else if (event.key === '3' && event.altKey) {
+        selectModel(3, () => {});
+    } else if (event.key === '4' && event.altKey) {
+        selectModel(4, () => {});
+    } else if (event.key === '5' && event.altKey) {
+        selectModel(5, () => {});
+    } else if (event.key === 's' && event.altKey) {
+        stop(() => {});
+    }
+}
+
+document.addEventListener('keydown', handleKeydown);
+
 function formatRequest(request) {
     const formatted = {};
     Object.keys(request).forEach(key => {

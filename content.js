@@ -184,7 +184,7 @@ async function selectModel(modelId, sendResponse) {
             pointerType: 'mouse',
         });
         btn.dispatchEvent(pointerDownEvent);
-        
+
         await delayRandom(100);
 
         const options = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
@@ -204,23 +204,40 @@ async function selectModel(modelId, sendResponse) {
 }
 
 function handleKeydown(event) {
-    const active = document.activeElement;
-    if (!active) {
-        return;
-    }
-    
-    if (event.key === '1' && event.altKey) {
-        selectModel(1, () => {});
+    if (event.key === 'k' && event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        log('Alt+K detected — dispatching Ctrl+K to page');
+
+        const down = new KeyboardEvent('keydown', {
+            key: 'k',
+            code: 'KeyK',
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(down);
+
+        const up = new KeyboardEvent('keyup', {
+            key: 'k',
+            code: 'KeyK',
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(up);
+    } else if (event.key === '1' && event.altKey) {
+        selectModel(1, () => { });
     } else if (event.key === '2' && event.altKey) {
-        selectModel(2, () => {});
+        selectModel(2, () => { });
     } else if (event.key === '3' && event.altKey) {
-        selectModel(3, () => {});
+        selectModel(3, () => { });
     } else if (event.key === '4' && event.altKey) {
-        selectModel(4, () => {});
+        selectModel(4, () => { });
     } else if (event.key === '5' && event.altKey) {
-        selectModel(5, () => {});
+        selectModel(5, () => { });
     } else if (event.key === 's' && event.altKey) {
-        stop(() => {});
+        stop(() => { });
     }
 }
 
@@ -273,7 +290,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: false, error: `Unknown action: ${request.action}` });
             break;
     }
-    
+
     return true;
 });
 

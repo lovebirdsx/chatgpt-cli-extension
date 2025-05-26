@@ -23,6 +23,8 @@ The project consists of three main components:
 
 * **Select Model**: Choose between different ChatGPT models (1-5), injects the model selection into the ChatGPT page.
   * Shortcut is `Alt + 1-5` to select the model.
+* **Search conversations**: Search for existing chats by name.
+  * Chatgpt default shortcut is `Ctrl + K` to open the search bar, but is conflicting with the browser's search functionality. Use `Alt + K` to open the search bar instead.
 * **Send Messages**: Send prompts to ChatGPT from your terminal.
 * **New Chat**: Start a new conversation.
 * **Delete Chat**: Delete the current conversation.

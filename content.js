@@ -203,8 +203,49 @@ async function selectModel(modelId, sendResponse) {
     }
 }
 
+async function toggleSkill(skillId, sendResponse) {
+    try {
+        const btn = document.getElementById('system-hint-button');
+        if (!btn) {
+            warn('System hint button not found.');
+            sendResponse({ success: false, error: 'System hint button not found.' });
+            return;
+        }
+
+        const pointerDownEvent = new PointerEvent('pointerdown', {
+            bubbles: true,
+            cancelable: true,
+            pointerType: 'mouse',
+        });
+        btn.dispatchEvent(pointerDownEvent);
+
+        await delayRandom(100);
+
+        const options = Array.from(document.querySelectorAll('[role="menuitemradio"]'));
+        if (options.length < skillId) {
+            warn(`Only ${options.length} skills found, cannot select #${skillId}.`);
+            sendResponse({ success: false, error: 'Not enough skill options.' });
+            return;
+        }
+
+        options[skillId - 1].click();
+        log(`selectSkill${skillId} executed`);
+        sendResponse({ success: true });
+    } catch (err) {
+        warn('selectSkill error:', err);
+        sendResponse({ success: false, error: err.message });
+    }
+}
+
 function handleKeydown(event) {
-    if (event.key === 'k' && event.altKey) {
+    if (['1', '2', '3', '4', '5'].includes(event.key) && event.altKey) {
+        const id = parseInt(event.key, 10);
+        if (event.ctrlKey) {
+            toggleSkill(id);
+        } else {
+            selectModel(id, () => { });
+        }
+    } else if (event.key === 'k' && event.altKey) {
         event.preventDefault();
         event.stopPropagation();
         log('Alt+K detected — dispatching Ctrl+K to page');
@@ -226,16 +267,6 @@ function handleKeydown(event) {
             cancelable: true
         });
         document.dispatchEvent(up);
-    } else if (event.key === '1' && event.altKey) {
-        selectModel(1, () => { });
-    } else if (event.key === '2' && event.altKey) {
-        selectModel(2, () => { });
-    } else if (event.key === '3' && event.altKey) {
-        selectModel(3, () => { });
-    } else if (event.key === '4' && event.altKey) {
-        selectModel(4, () => { });
-    } else if (event.key === '5' && event.altKey) {
-        selectModel(5, () => { });
     } else if (event.key === 's' && event.altKey) {
         stop(() => { });
     }
@@ -282,6 +313,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'selectModel5': {
             const modelId = parseInt(request.action.replace('selectModel', ''), 10);
             selectModel(modelId, sendResponse);
+            break;
+        }
+
+        case 'selectSkill1':
+        case 'selectSkill2':
+        case 'selectSkill3':
+        case 'selectSkill4':
+        case 'selectSkill5': {
+            const skillId = parseInt(request.action.replace('selectSkill', ''), 10);
+            toggleSkill(skillId, sendResponse);
             break;
         }
 

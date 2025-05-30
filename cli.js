@@ -84,6 +84,8 @@ async function main() {
             const filePath = args[fileFlagIndex + 1];
             try {
                 text = fs.readFileSync(filePath, 'utf8');
+
+                // chatgpt input expects \n, \r\n will show up as two new lines
                 text = text.replaceAll('\r\n', '\n');
             } catch (e) {
                 console.error(`Error: Failed to read file '${filePath}': ${e.message}`);
@@ -99,9 +101,9 @@ async function main() {
         }
         commandPayload.text = text;
 
-    } else if (!['ping', 'newChat', 'deleteChat', 'stop', 'selectModel1', 'selectModel2', 'selectModel3', 'selectModel4', 'selectModel5'].includes(action)) {
+    } else if (!['ping', 'newChat', 'deleteChat', 'stop', 'selectModel1', 'selectModel2', 'selectModel3', 'selectModel4', 'selectModel5', 'toggleSkill1', 'toggleSkill2', 'toggleSkill3', 'toggleSkill4'].includes(action)) {
         console.error(`Error: Unknown command "${action}"`);
-        console.error('Available commands: ping, sendMessage <text|--file <path>>, newChat, deleteChat, stop, selectModel1…selectModel5');
+        console.error('Available commands: ping, sendMessage <text|--file <path>>, newChat, deleteChat, stop, selectModel1…selectModel5, toggleSkill1…toggleSkill4');
         process.exit(1);
     }
 
